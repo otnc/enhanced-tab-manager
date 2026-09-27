@@ -1,5 +1,11 @@
 # Enhanced Tab Manager
 
+**English** | [日本語](README.ja.md)
+
+<div style="text-align: center;">
+  <img src="public/icons/128x128.png" alt="Logo" style="display: block; width: auto; height: 128px; margin: 0 auto;">
+</div>
+
 ## Supported Languages
 
 | Stable  | Unstable (Beta) |
@@ -18,59 +24,48 @@
 
 ## Description
 
-<details>
-  <summary>English</summary>
-  <strong>Take control of your browser tabs.</strong><br>
-  Enhanced Tab Manager automatically organizes your messy tabs into groups based on domain names or custom rules.<br>
-  You can also "Save & Close" all open tabs to free up memory and restore them later from the popup list.<br>
-  Ensuring fast performance without tracking your data.<br>
-  We are open to feedback! Please feel free to open an issue on GitHub.
-</details>
-<details>
-  <summary>日本語</summary>
-  <strong>ブラウザのタブを、もっと自由に管理しよう。</strong><br>
-  Enhanced Tab Managerは、ドメイン名やカスタムルールに基づいて、散らばったタブを自動的にグループ化して整理します。<br>
-  また、「すべてのタブを保存して閉じる」機能を使えば、メモリを解放しつつ、後でリストから簡単にタブを復元できます。<br>
-  データの外部送信やトラッキングは一切行いません。<br>
-  フィードバックはGithubのIssuesで受け付けています。機能の要望があればお気軽にどうぞ！
-</details>
+<strong>Take control of your browser tabs.</strong>
 
-<div style="text-align: center;">
-  <img src="icons/128x128.png" alt="Logo" style="display: block; width: auto; height: 128px; margin: 0 auto;">
-</div>
+Enhanced Tab Manager automatically organizes your messy tabs into groups based on domain names or custom rules.
 
-## Pattern Matching Rules / パターンマッチングの仕様
+You can also "Save & Close" all open tabs to free up memory and restore them later from the popup list.
+
+Ensuring fast performance without tracking your data.
+
+We are open to feedback! Please feel free to open an issue on GitHub.
+
+## Pattern Matching Rules
 
 Patterns use a glob-style syntax. Wildcards can appear anywhere in a pattern and can be combined freely.
-パターンは glob 風の記法です。ワイルドカードは位置を問わず使え、自由に組み合わせられます。
 
-| Wildcard / ワイルドカード | Meaning / 意味                                                |
-| :------------------------ | :------------------------------------------------------------ |
-| `*`                       | Any sequence of characters (including none) / 任意の0文字以上 |
-| `?`                       | Any single character / 任意の1文字                            |
+| Wildcard | Meaning                                     |
+| :------- | :------------------------------------------ |
+| `*`      | Any sequence of characters (including none) |
+| `?`      | Any single character                        |
 
-| Pattern / 記法      | Description / 説明                                                                     | Match Example / 一致例                    | No-Match / 不一致例                     |
-| :------------------ | :------------------------------------------------------------------------------------- | :---------------------------------------- | :-------------------------------------- |
-| `example.com`       | **Exact Match**<br>Matches the entire URL/Domain perfectly.<br>完全一致                | `example.com`                             | `sub.example.com`<br>`example.org`      |
-| `*.example.com`     | **Subdomain Wildcard**<br>Matches subdomains only.<br>サブドメインのみ一致             | `blog.example.com`                        | `example.com`<br>`notexample.com`       |
-| `example.*`         | **TLD Wildcard**<br>Matches any Top Level Domain.<br>TLDワイルドカード                 | `example.com`<br>`example.jp`             | `my-example.com`                        |
-| `*keyword*`         | **Partial Match**<br>Matches anywhere in the string.<br>部分一致                       | `my-keyword.com`<br>`keyword.example.com` | (matches anywhere / どこにあっても一致) |
-| `shop?.example.com` | **Single Character Wildcard**<br>Matches exactly one character.<br>1文字ワイルドカード | `shop1.example.com`                       | `shop12.example.com`                    |
+| Pattern             | Description                                                     | Match Example                             | No-Match Example                   |
+| :------------------ | :-------------------------------------------------------------- | :---------------------------------------- | :--------------------------------- |
+| `example.com`       | **Exact Match**<br>Matches the entire URL/Domain perfectly.     | `example.com`                             | `sub.example.com`<br>`example.org` |
+| `*.example.com`     | **Subdomain Wildcard**<br>Matches subdomains only.              | `blog.example.com`                        | `example.com`<br>`notexample.com`  |
+| `example.*`         | **TLD Wildcard**<br>Matches any Top Level Domain.               | `example.com`<br>`example.jp`             | `my-example.com`                   |
+| `*keyword*`         | **Partial Match**<br>Matches anywhere in the string.            | `my-keyword.com`<br>`keyword.example.com` | (matches anywhere)                 |
+| `shop?.example.com` | **Single Character Wildcard**<br>Matches exactly one character. | `shop1.example.com`                       | `shop12.example.com`               |
 
 > [!Note]
 > Before matching, URLs are normalized based on your settings (e.g., removing `https://`, `www.`, or query parameters).
-> マッチングの前に、設定に基づいてURLの正規化（`https://`や`www.`の削除など）が行われます。
 >
 > A pattern without wildcards requires an exact match. The old quoted exact-match syntax (`"exact.com"`) was removed in v1.1.0; stored patterns are migrated automatically on update.
-> ワイルドカードなしのパターンは完全一致になります。旧バージョンの引用符による完全一致記法（`"exact.com"`）は v1.1.0 で廃止され、保存済みのパターンは更新時に自動変換されます。
 >
 > With the "Disable Wildcards" option enabled, `*` and `?` are treated as literal characters and patterns require an exact match.
-> 「ワイルドカードを無効化」オプションを有効にすると、`*` と `?` は通常の文字として扱われ、完全一致での判定になります。
 
-### Download
+## Download
 
-- ~~Chrome Webstore~~
+- [Chrome Web Store](https://chromewebstore.google.com/detail/pjjabdbillaokbiighjgibfajkacfind)
 - [GitHub Releases](https://github.com/otnc/enhanced-tab-manager/releases)
+
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, documentation workflow, and release process.
 
 ## Get Support
 
