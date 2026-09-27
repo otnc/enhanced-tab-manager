@@ -4,7 +4,7 @@
 
 const CACHE_TTL_MS = 10000;
 
-let cachedNormalWindowIds = null;
+let cachedNormalWindowIds: Set<number> | null = null;
 let cacheExpiresAt = 0;
 
 function invalidateCache() {
@@ -14,13 +14,16 @@ function invalidateCache() {
 chrome.windows.onCreated.addListener(invalidateCache);
 chrome.windows.onRemoved.addListener(invalidateCache);
 
-export async function getNormalWindowIds() {
+export async function getNormalWindowIds(): Promise<Set<number>> {
   if (cachedNormalWindowIds && Date.now() < cacheExpiresAt) {
     return cachedNormalWindowIds;
   }
   const windows = await chrome.windows.getAll();
   cachedNormalWindowIds = new Set(
-    windows.filter((w) => w.type === "normal").map((w) => w.id),
+    windows
+      .filter((w) => w.type === "normal")
+      .map((w) => w.id)
+      .filter((id): id is number => id !== undefined),
   );
   cacheExpiresAt = Date.now() + CACHE_TTL_MS;
   return cachedNormalWindowIds;

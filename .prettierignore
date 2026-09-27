@@ -1,6 +1,7 @@
-_locales/
+public/_locales/
 node_modules/
+dist/
 private/
-manifest.json
+public/manifest.json
 package-lock.json
 package.json

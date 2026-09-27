@@ -1,5 +1,6 @@
 node_modules/
 private/
+dist/
 
 # Local AI agent config; only .agents/skills is published
 .claude/

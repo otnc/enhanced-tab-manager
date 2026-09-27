@@ -1,15 +1,35 @@
 {
   "name": "enhanced-tab-manager",
   "version": "1.1.0",
-  "main": "src/background.js",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "format": "prettier --write ."
+    "dev": "vite build --watch",
+    "build": "node scripts/sync-version.js && vite build && node scripts/package.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm run lint && npm run format:check"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "prettier": "^3.7.4"
+    "@eslint/js": "^10.0.1",
+    "@types/archiver": "^8.0.0",
+    "@types/chrome": "^0.3.0",
+    "@types/node": "^26.6.3",
+    "archiver": "^8.0.0",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.12.0",
+    "prettier": "^3.7.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vite": "^8.3.1",
+    "vite-plugin-static-copy": "^4.1.1"
   }
 }
