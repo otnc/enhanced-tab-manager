@@ -2,8 +2,7 @@ import { defineConfig } from "kiritan";
 
 export default defineConfig({
   locales: { default: "en", list: ["en", "ja"] },
-  // README.md for the default locale and README.ja.md for Japanese, both at
-  // the repo root (the "dot" preset has no {dir} token).
+  // README.md for the default locale and README.ja.md for Japanese, both at the repo root (the "dot" preset has no {dir} token).
   naming: { preset: "dot" },
   sources: [
     { glob: "README.base.md", strategy: "inline" },

@@ -1,5 +1,4 @@
-// Packages dist/ into a zip named after the package name and version,
-// ready to upload to the Chrome Web Store or attach to a release.
+// Packages dist/ into a zip named after the package name and version, ready to upload to the Chrome Web Store or attach to a release.
 import { createWriteStream, readFileSync } from "node:fs";
 import { ZipArchive } from "archiver";
 

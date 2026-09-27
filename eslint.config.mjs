@@ -15,8 +15,7 @@ export default tseslint.config(
       },
     },
     rules: {
-      // Best-effort chrome API calls are wrapped in intentionally empty
-      // catches (a failed call just skips that step).
+      // Best-effort chrome API calls are wrapped in intentionally empty catches (a failed call just skips that step).
       "no-empty": ["error", { allowEmptyCatch: true }],
     },
   },

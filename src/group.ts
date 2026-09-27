@@ -248,8 +248,7 @@ async function applyTabGrouping(
         }
       }
 
-      // chrome.tabs.group() types tabIds as a non-empty tuple; matched is
-      // non-empty here and tab ids are integers in practice.
+      // chrome.tabs.group() types tabIds as a non-empty tuple; matched is non-empty here and tab ids are integers in practice.
       const ids = matched
         .map((t) => t.id)
         .filter((id): id is number => Number.isInteger(id)) as [

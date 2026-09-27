@@ -1,5 +1,4 @@
-// Syncs the version in package.json into public/manifest.json so the
-// two never drift apart. Run as part of "npm run build".
+// Syncs the version in package.json into public/manifest.json so the two never drift apart. Run as part of "npm run build".
 import { readFileSync, writeFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));

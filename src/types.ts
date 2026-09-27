@@ -24,17 +24,14 @@ export interface ClosedTab {
   favIconUrl?: string;
 }
 
-// Manager on/off flags read from storage. All keys are optional because
-// storage may predate them; callers treat undefined as the default value.
+// Manager on/off flags read from storage. All keys are optional because storage may predate them; callers treat undefined as the default value.
 export interface ManagerSettings {
   enableManager?: boolean;
   enableGrouping?: boolean;
   keepWindowOpen?: boolean;
 }
 
-// URL normalization options read from storage. All keys are optional
-// because storage may predate them; callers treat undefined as the
-// default value.
+// URL normalization options read from storage. All keys are optional because storage may predate them; callers treat undefined as the default value.
 export interface GroupingSettings {
   optIgnoreProtocol?: boolean;
   optIgnoreWww?: boolean;
