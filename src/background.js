@@ -4,8 +4,12 @@ import {
   clearAllSavedTabs,
 } from "./tab.js";
 import { scheduleGrouping } from "./group.js";
+import { migratePatterns } from "./migration.js";
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "update") {
+    migratePatterns();
+  }
   chrome.storage.local.get(
     [
       "enableManager",
@@ -89,6 +93,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
     ];
     if (keysToCheck.some((k) => changes[k])) {
       tryGrouping();
+    }
+    // Convert old-format groups imported from a backup of a previous
+    // version (no-op unless patternVersion is stale).
+    if (changes.groups) {
+      migratePatterns();
     }
   }
 });
