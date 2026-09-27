@@ -1,10 +1,6 @@
-import {
-  saveAndCloseAllTabs,
-  restoreAllTabs,
-  clearAllSavedTabs,
-} from "./tab.js";
-import { scheduleGrouping } from "./group.js";
-import { migratePatterns } from "./migration.js";
+import { saveAndCloseAllTabs, restoreAllTabs, clearAllSavedTabs } from "./tab";
+import { scheduleGrouping } from "./group";
+import { migratePatterns } from "./migration";
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === "update") {
@@ -23,7 +19,7 @@ chrome.runtime.onInstalled.addListener((details) => {
       "optDisableWildcards",
     ],
     (res) => {
-      const defaults = {
+      const defaults: Record<string, boolean> = {
         enableManager: true,
         enableGrouping: true,
         keepWindowOpen: false,
@@ -35,7 +31,7 @@ chrome.runtime.onInstalled.addListener((details) => {
         optDisableWildcards: false,
       };
 
-      const updates = {};
+      const updates: Record<string, boolean> = {};
       for (const key in defaults) {
         if (res[key] === undefined) {
           updates[key] = defaults[key];

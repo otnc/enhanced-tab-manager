@@ -1,0 +1,144 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.2.3). Leave empty to use the current package.json version"
+        required: false
+        default: ""
+      force_release:
+        description: "Force release even if package.json version is not newer"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply version input
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid version format: $VERSION"
+            exit 1
+          fi
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          node scripts/sync-version.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json public/manifest.json
+          if git diff --cached --quiet; then
+            echo "No version changes to commit"
+          else
+            git commit -m "chore: bump version to $VERSION"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload build artifact (debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Read package info
+        id: pkg
+        run: |
+          node -e 'const fs=require("fs"); const p=require("./package.json"); fs.writeFileSync(process.env.GITHUB_OUTPUT, "name="+p.name+"\nversion="+p.version+"\n", {flag:"a"});'
+
+      - name: Validate package version
+        run: |
+          if [ -z "${{ steps.pkg.outputs.version }}" ]; then echo "Package version is empty. Aborting."; exit 1; fi
+
+      - name: Get latest tag
+        id: tag
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git tag --sort=-v:refname | head -n1 || echo "")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          if [ -z "$LATEST_TAG" ]; then LATEST="0.0.0"; else LATEST="${LATEST_TAG#v}"; fi
+          echo "latest_version=$LATEST" >> $GITHUB_OUTPUT
+
+      - name: Decide whether to release
+        id: compare
+        run: |
+          # Allow forcing release when manually triggered
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.force_release }}" = "true" ]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          LATEST=${{ steps.tag.outputs.latest_version }}
+          VERSION=${{ steps.pkg.outputs.version }}
+          echo "latest=$LATEST"; echo "version=$VERSION"
+          if [ -z "$LATEST" ]; then echo "should_release=true" >> $GITHUB_OUTPUT; exit 0; fi
+          if [ "$LATEST" = "$VERSION" ]; then echo "should_release=false" >> $GITHUB_OUTPUT; exit 0; fi
+          HIGHEST=$(printf '%s\n%s\n' "$LATEST" "$VERSION" | sort -V | tail -n1)
+          if [ "$HIGHEST" = "$VERSION" ]; then echo "should_release=true" >> $GITHUB_OUTPUT; else echo "should_release=false" >> $GITHUB_OUTPUT; fi
+
+      - name: Prepare release assets
+        if: steps.compare.outputs.should_release == 'true'
+        run: |
+          NAME=${{ steps.pkg.outputs.name }}
+          VERSION=${{ steps.pkg.outputs.version }}
+          mkdir -p out
+          if [ -f "dist/${NAME}-${VERSION}.zip" ]; then cp "dist/${NAME}-${VERSION}.zip" "out/Chrome_${NAME}_v${VERSION}.zip"; else echo "No dist/${NAME}-${VERSION}.zip"; exit 1; fi
+          ls -la out
+
+      - name: Create git tag
+        if: steps.compare.outputs.should_release == 'true'
+        run: |
+          VERSION=${{ steps.pkg.outputs.version }}
+          if [ -z "$VERSION" ]; then echo "VERSION is empty; aborting tag creation"; exit 1; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists; skipping tag creation"
+          else
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+          fi
+
+      - name: Create GitHub Release
+        if: steps.compare.outputs.should_release == 'true'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.pkg.outputs.version }}
+          release_name: v${{ steps.pkg.outputs.version }}
+          body: Release v${{ steps.pkg.outputs.version }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Chrome asset to Release
+        if: steps.compare.outputs.should_release == 'true'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: out/Chrome_${{ steps.pkg.outputs.name }}_v${{ steps.pkg.outputs.version }}.zip
+          asset_name: Chrome_${{ steps.pkg.outputs.name }}_v${{ steps.pkg.outputs.version }}.zip
+          asset_content_type: application/zip

@@ -1,16 +1,17 @@
-import { getNormalWindowIds } from "./window.js";
+import { getNormalWindowIds } from "./window";
+import type { GroupingSettings, TabGroup, TabGroupColor } from "./types";
 
 let isGrouping = false;
 
-function debounce(fn, wait = 300) {
-  let timeout;
-  return (...args) => {
+function debounce<A extends unknown[]>(fn: (...args: A) => void, wait = 300) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  return (...args: A) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => fn(...args), wait);
   };
 }
 
-function punycodeToUnicode(domain) {
+function punycodeToUnicode(domain: string): string {
   const base = 36;
   const tMin = 1;
   const tMax = 26;
@@ -20,9 +21,9 @@ function punycodeToUnicode(domain) {
   const initialN = 128;
   const delimiter = "-";
 
-  let output = [];
+  let output: string[] = [];
   let input = domain.split("");
-  let i = domain.lastIndexOf(delimiter);
+  const i = domain.lastIndexOf(delimiter);
   let n = initialN;
   let bias = initialBias;
   let index = 0;
@@ -33,11 +34,13 @@ function punycodeToUnicode(domain) {
   }
 
   while (input.length > 0) {
-    let oldi = index;
+    const oldi = index;
     let w = 1;
 
     for (let k = base; ; k += base) {
-      const charCode = input.shift().charCodeAt(0);
+      const shifted = input.shift();
+      if (shifted === undefined) break;
+      const charCode = shifted.charCodeAt(0);
       const digit = charCode - (charCode < 58 ? 22 : charCode < 91 ? 65 : 97);
       index += digit * w;
 
@@ -55,7 +58,7 @@ function punycodeToUnicode(domain) {
 
   return output.join("");
 
-  function adapt(delta, numPoints, firstTime) {
+  function adapt(delta: number, numPoints: number, firstTime: boolean): number {
     delta = firstTime ? Math.floor(delta / damp) : delta >> 1;
     delta += Math.floor(delta / numPoints);
     let k = 0;
@@ -67,9 +70,9 @@ function punycodeToUnicode(domain) {
   }
 }
 
-function decodePunycodeUrl(url) {
+function decodePunycodeUrl(url: string): string {
   try {
-    const punycodePattern = /\bxn--[a-zA-Z0-9\-]+/i;
+    const punycodePattern = /\bxn--[a-zA-Z0-9-]+/i;
     if (!punycodePattern.test(url)) return url;
 
     try {
@@ -84,7 +87,7 @@ function decodePunycodeUrl(url) {
           .join(".");
         return url.replace(hostname, decodedHost);
       }
-    } catch (e) {
+    } catch {
       return url
         .split(".")
         .map((part) => {
@@ -94,12 +97,12 @@ function decodePunycodeUrl(url) {
         .join(".");
     }
     return url;
-  } catch (e) {
+  } catch {
     return url;
   }
 }
 
-function normalizeUrl(url, settings) {
+function normalizeUrl(url: string, settings: GroupingSettings): string {
   let processed = decodePunycodeUrl(url);
 
   if (settings.optIgnoreProtocol) {
@@ -140,7 +143,7 @@ function normalizeUrl(url, settings) {
 // - "?" matches exactly one character
 // - a pattern without wildcards requires an exact match
 // Examples: "*.example.com" (subdomains), "example.*" (any TLD), "*keyword*" (partial match), "example.com" (exact match).
-function globToRegExp(pattern) {
+function globToRegExp(pattern: string): RegExp {
   let source = "";
   for (const ch of pattern) {
     if (ch === "*") {
@@ -154,7 +157,11 @@ function globToRegExp(pattern) {
   return new RegExp(`^${source}$`);
 }
 
-function isMatch(url, pattern, disableWildcards) {
+function isMatch(
+  url: string,
+  pattern: string,
+  disableWildcards?: boolean,
+): boolean {
   if (!pattern) return false;
 
   if (disableWildcards) {
@@ -178,14 +185,17 @@ export const scheduleGrouping = debounce(() => {
       "optDomainOnly",
       "optDisableWildcards",
     ],
-    (settings) => {
+    (settings: { groups?: TabGroup[] } & GroupingSettings) => {
       const groups = settings.groups || [];
       applyTabGrouping(groups, settings);
     },
   );
 }, 500);
 
-async function applyTabGrouping(groups, settings) {
+async function applyTabGrouping(
+  groups: TabGroup[],
+  settings: GroupingSettings,
+): Promise<void> {
   isGrouping = true;
   try {
     // Brave crashes when chrome.tabs.group() targets a tab inside a popup window (brave/brave-browser#59347). Only touch tabs that live in normal windows.
@@ -208,7 +218,11 @@ async function applyTabGrouping(groups, settings) {
         continue;
 
       const matched = tabs.filter((t) => {
-        if (processedTabIds.has(t.id) || typeof t.url !== "string")
+        if (
+          t.id === undefined ||
+          processedTabIds.has(t.id) ||
+          typeof t.url !== "string"
+        )
           return false;
         const cleanUrl = normalizeUrl(t.url, settings);
         return group.patterns.some((p) =>
@@ -218,7 +232,7 @@ async function applyTabGrouping(groups, settings) {
 
       if (matched.length === 0) continue;
 
-      let existingGid = null;
+      let existingGid: number | null = null;
       for (const t of matched) {
         if (
           t.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE &&
@@ -234,9 +248,15 @@ async function applyTabGrouping(groups, settings) {
         }
       }
 
-      const ids = matched.map((t) => t.id).filter(Number.isInteger);
+      // chrome.tabs.group() types tabIds as a non-empty tuple; matched is non-empty here and tab ids are integers in practice.
+      const ids = matched
+        .map((t) => t.id)
+        .filter((id): id is number => Number.isInteger(id)) as [
+        number,
+        ...number[],
+      ];
       let groupId = existingGid;
-      const color = group.color || "grey";
+      const color: TabGroupColor = group.color || "grey";
 
       if (groupId != null) {
         await chrome.tabs.group({ groupId, tabIds: ids });
@@ -256,6 +276,7 @@ async function applyTabGrouping(groups, settings) {
     }
 
     for (const t of tabs) {
+      if (t.id === undefined) continue;
       if (
         !processedTabIds.has(t.id) &&
         t.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE
@@ -263,12 +284,13 @@ async function applyTabGrouping(groups, settings) {
         let isManagedGroup = false;
         try {
           const tg = await chrome.tabGroups.get(t.groupId);
-          if (desiredNames.includes(tg.title)) {
+          if (tg.title !== undefined && desiredNames.includes(tg.title)) {
             isManagedGroup = true;
           }
         } catch {}
 
         if (isManagedGroup) {
+          if (typeof t.url !== "string") continue;
           const cleanUrl = normalizeUrl(t.url, settings);
           const matchesAny = groups.some((g) =>
             g.patterns.some((p) =>

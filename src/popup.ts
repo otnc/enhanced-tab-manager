@@ -1,8 +1,24 @@
-import { restoreAllTabs, saveAndCloseAllTabs } from "../src/tab.js";
+import { restoreAllTabs, saveAndCloseAllTabs } from "./tab";
+import type {
+  ClosedTab,
+  GroupingSettings,
+  ManagerSettings,
+  TabGroup,
+  TabGroupColor,
+} from "./types";
+
+// Throws at startup if the popup HTML is missing an expected element, so the references below can be non-null.
+const byId = <T extends HTMLElement>(id: string): T => {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing element: #${id}`);
+  return el as T;
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-i18n]").forEach((el) => {
-    const msg = chrome.i18n.getMessage(el.getAttribute("data-i18n"));
+    const key = el.getAttribute("data-i18n");
+    if (!key) return;
+    const msg = chrome.i18n.getMessage(key);
     if (msg) el.textContent = msg;
   });
   const phGroupName = chrome.i18n.getMessage("phGroupName");
@@ -10,33 +26,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const msgImportSuccess = chrome.i18n.getMessage("alertImportSuccess");
   const msgImportFail = chrome.i18n.getMessage("alertImportFail");
 
-  const chkEnableManager = document.getElementById("chk-enable-manager");
-  const chkEnableGrouping = document.getElementById("chk-enable-grouping");
-  const chkKeepWindow = document.getElementById("chk-keep-window");
+  const chkEnableManager = byId<HTMLInputElement>("chk-enable-manager");
+  const chkEnableGrouping = byId<HTMLInputElement>("chk-enable-grouping");
+  const chkKeepWindow = byId<HTMLInputElement>("chk-keep-window");
 
-  const optIgnoreProtocol = document.getElementById("opt-ignore-protocol");
-  const optIgnoreWww = document.getElementById("opt-ignore-www");
-  const optIgnoreQuery = document.getElementById("opt-ignore-query");
-  const optIgnoreHash = document.getElementById("opt-ignore-hash");
-  const optDomainOnly = document.getElementById("opt-domain-only");
-  const optDisableWildcards = document.getElementById("opt-disable-wildcards");
+  const optIgnoreProtocol = byId<HTMLInputElement>("opt-ignore-protocol");
+  const optIgnoreWww = byId<HTMLInputElement>("opt-ignore-www");
+  const optIgnoreQuery = byId<HTMLInputElement>("opt-ignore-query");
+  const optIgnoreHash = byId<HTMLInputElement>("opt-ignore-hash");
+  const optDomainOnly = byId<HTMLInputElement>("opt-domain-only");
+  const optDisableWildcards = byId<HTMLInputElement>("opt-disable-wildcards");
 
-  const managerUI = document.getElementById("manager-ui");
-  const groupingUI = document.getElementById("grouping-ui");
+  const managerUI = byId("manager-ui");
+  const groupingUI = byId("grouping-ui");
 
-  const closedList = document.getElementById("closed-list");
-  const restoreAllBtn = document.getElementById("restore-all");
-  const clearAllBtn = document.getElementById("clear-all");
-  const saveCloseAllBtn = document.getElementById("save-close-all");
+  const closedList = byId<HTMLUListElement>("closed-list");
+  const restoreAllBtn = byId<HTMLButtonElement>("restore-all");
+  const clearAllBtn = byId<HTMLButtonElement>("clear-all");
+  const saveCloseAllBtn = byId<HTMLButtonElement>("save-close-all");
 
-  const groupList = document.getElementById("group-list");
-  const addGroupBtn = document.getElementById("add-group");
+  const groupList = byId<HTMLUListElement>("group-list");
+  const addGroupBtn = byId<HTMLButtonElement>("add-group");
 
-  const btnExport = document.getElementById("btn-export");
-  const btnImportTrigger = document.getElementById("btn-import-trigger");
-  const fileImport = document.getElementById("file-import");
+  const btnExport = byId<HTMLButtonElement>("btn-export");
+  const btnImportTrigger = byId<HTMLButtonElement>("btn-import-trigger");
+  const fileImport = byId<HTMLInputElement>("file-import");
 
-  const availableColors = [
+  const availableColors: TabGroupColor[] = [
     "grey",
     "blue",
     "red",
@@ -48,11 +64,11 @@ document.addEventListener("DOMContentLoaded", () => {
     "orange",
   ];
 
-  let closedTabs = [];
-  let groups = [];
+  let closedTabs: ClosedTab[] = [];
+  let groups: TabGroup[] = [];
 
   function loadSettings() {
-    const keys = [
+    const keys: (keyof ManagerSettings | keyof GroupingSettings)[] = [
       "enableManager",
       "enableGrouping",
       "keepWindowOpen",
@@ -63,27 +79,30 @@ document.addEventListener("DOMContentLoaded", () => {
       "optDomainOnly",
       "optDisableWildcards",
     ];
-    chrome.storage.local.get(keys, (res) => {
-      const eM = res.enableManager !== false;
-      const eG = res.enableGrouping !== false;
-      const kW = res.keepWindowOpen === true;
-      chkEnableManager.checked = eM;
-      chkEnableGrouping.checked = eG;
-      chkKeepWindow.checked = kW;
+    chrome.storage.local.get<ManagerSettings & GroupingSettings>(
+      keys,
+      (res) => {
+        const eM = res.enableManager !== false;
+        const eG = res.enableGrouping !== false;
+        const kW = res.keepWindowOpen === true;
+        chkEnableManager.checked = eM;
+        chkEnableGrouping.checked = eG;
+        chkKeepWindow.checked = kW;
 
-      optIgnoreProtocol.checked = res.optIgnoreProtocol !== false;
-      optIgnoreWww.checked = res.optIgnoreWww !== false;
-      optIgnoreQuery.checked = res.optIgnoreQuery !== false;
-      optIgnoreHash.checked = res.optIgnoreHash !== false;
-      optDomainOnly.checked = res.optDomainOnly === true;
-      optDisableWildcards.checked = res.optDisableWildcards === true;
+        optIgnoreProtocol.checked = res.optIgnoreProtocol !== false;
+        optIgnoreWww.checked = res.optIgnoreWww !== false;
+        optIgnoreQuery.checked = res.optIgnoreQuery !== false;
+        optIgnoreHash.checked = res.optIgnoreHash !== false;
+        optDomainOnly.checked = res.optDomainOnly === true;
+        optDisableWildcards.checked = res.optDisableWildcards === true;
 
-      toggleUI(eM, eG);
-    });
+        toggleUI(eM, eG);
+      },
+    );
   }
   loadSettings();
 
-  function bindCheckbox(elem, key) {
+  function bindCheckbox(elem: HTMLInputElement, key: string) {
     elem.addEventListener("change", () => {
       chrome.storage.local.set({ [key]: elem.checked });
     });
@@ -107,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleUI(chkEnableManager.checked, chkEnableGrouping.checked),
   );
 
-  function toggleUI(showManager, showGrouping) {
+  function toggleUI(showManager: boolean, showGrouping: boolean) {
     managerUI.style.display = showManager ? "block" : "none";
     groupingUI.style.display = showGrouping ? "block" : "none";
   }
@@ -132,18 +151,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   fileImport.addEventListener("change", (e) => {
-    const file = e.target.files[0];
+    const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const data = JSON.parse(ev.target.result);
+        const text = (ev.target as FileReader).result;
+        if (typeof text !== "string") throw new Error();
+        const data = JSON.parse(text);
         if (typeof data !== "object" || data === null) throw new Error();
         chrome.storage.local.set(data, () => {
           alert(msgImportSuccess);
           window.location.reload();
         });
-      } catch (err) {
+      } catch {
         alert(msgImportFail);
       }
     };
@@ -152,9 +173,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   chrome.commands.getAll((commands) => {
-    const shortcuts = {};
+    const shortcuts: Record<string, string> = {};
     commands.forEach((c) => {
-      if (c.shortcut) shortcuts[c.name] = c.shortcut;
+      if (c.name && c.shortcut) shortcuts[c.name] = c.shortcut;
     });
     if (shortcuts.restore_all_tabs)
       restoreAllBtn.textContent += ` (${shortcuts.restore_all_tabs})`;
@@ -193,9 +214,9 @@ document.addEventListener("DOMContentLoaded", () => {
       a.style.overflow = "hidden";
       a.style.textOverflow = "ellipsis";
 
-      const restore = (e) => {
-        if (e.target.tagName === "BUTTON" || e.target.tagName === "SELECT")
-          return;
+      const restore = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.tagName === "BUTTON" || target.tagName === "SELECT") return;
         chrome.tabs.create({ url: tab.url, active: false });
         closedTabs.splice(i, 1);
         saveClosedTabs();
@@ -233,10 +254,13 @@ document.addEventListener("DOMContentLoaded", () => {
     saveAndCloseAllTabs();
   });
 
-  chrome.storage.local.get("closedTabs", (res) => {
-    closedTabs = res.closedTabs || [];
-    renderClosedTabs();
-  });
+  chrome.storage.local.get<{ closedTabs?: ClosedTab[] }>(
+    "closedTabs",
+    (res) => {
+      closedTabs = res.closedTabs || [];
+      renderClosedTabs();
+    },
+  );
 
   function saveGroups() {
     chrome.storage.local.set({ groups });
@@ -260,7 +284,7 @@ document.addEventListener("DOMContentLoaded", () => {
         colorSel.appendChild(opt);
       });
       colorSel.addEventListener("change", () => {
-        groups[idx].color = colorSel.value;
+        groups[idx].color = colorSel.value as TabGroupColor;
         saveGroups();
       });
 
@@ -302,7 +326,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveGroups();
   });
 
-  chrome.storage.local.get("groups", (res) => {
+  chrome.storage.local.get<{ groups?: TabGroup[] }>("groups", (res) => {
     groups = res.groups || [];
     renderGroups();
   });
@@ -310,37 +334,38 @@ document.addEventListener("DOMContentLoaded", () => {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
     if (changes.closedTabs) {
-      closedTabs = changes.closedTabs.newValue || [];
+      closedTabs = (changes.closedTabs.newValue as ClosedTab[]) || [];
       renderClosedTabs();
     }
     if (changes.groups) {
-      groups = changes.groups.newValue || [];
+      groups = (changes.groups.newValue as TabGroup[]) || [];
       renderGroups();
     }
 
     if (changes.enableManager) {
-      chkEnableManager.checked = changes.enableManager.newValue;
+      chkEnableManager.checked = changes.enableManager.newValue as boolean;
       toggleUI(chkEnableManager.checked, chkEnableGrouping.checked);
     }
     if (changes.enableGrouping) {
-      chkEnableGrouping.checked = changes.enableGrouping.newValue;
+      chkEnableGrouping.checked = changes.enableGrouping.newValue as boolean;
       toggleUI(chkEnableManager.checked, chkEnableGrouping.checked);
     }
     if (changes.keepWindowOpen)
-      chkKeepWindow.checked = changes.keepWindowOpen.newValue;
+      chkKeepWindow.checked = changes.keepWindowOpen.newValue as boolean;
 
     // URL Options sync
     if (changes.optIgnoreProtocol)
-      optIgnoreProtocol.checked = changes.optIgnoreProtocol.newValue;
+      optIgnoreProtocol.checked = changes.optIgnoreProtocol.newValue as boolean;
     if (changes.optIgnoreWww)
-      optIgnoreWww.checked = changes.optIgnoreWww.newValue;
+      optIgnoreWww.checked = changes.optIgnoreWww.newValue as boolean;
     if (changes.optIgnoreQuery)
-      optIgnoreQuery.checked = changes.optIgnoreQuery.newValue;
+      optIgnoreQuery.checked = changes.optIgnoreQuery.newValue as boolean;
     if (changes.optIgnoreHash)
-      optIgnoreHash.checked = changes.optIgnoreHash.newValue;
+      optIgnoreHash.checked = changes.optIgnoreHash.newValue as boolean;
     if (changes.optDomainOnly)
-      optDomainOnly.checked = changes.optDomainOnly.newValue;
+      optDomainOnly.checked = changes.optDomainOnly.newValue as boolean;
     if (changes.optDisableWildcards)
-      optDisableWildcards.checked = changes.optDisableWildcards.newValue;
+      optDisableWildcards.checked = changes.optDisableWildcards
+        .newValue as boolean;
   });
 });
