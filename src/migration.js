@@ -11,11 +11,7 @@ const PATTERN_VERSION = 2;
 function convertPattern(pattern) {
   if (typeof pattern !== "string" || pattern === "") return pattern;
 
-  if (
-    pattern.length >= 2 &&
-    pattern.startsWith('"') &&
-    pattern.endsWith('"')
-  ) {
+  if (pattern.length >= 2 && pattern.startsWith('"') && pattern.endsWith('"')) {
     return pattern.slice(1, -1);
   }
 
