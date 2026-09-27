@@ -1,3 +1,5 @@
+import { getNormalWindowIds } from "./window.js";
+
 let isGrouping = false;
 
 function debounce(fn, wait = 300) {
@@ -231,7 +233,13 @@ export const scheduleGrouping = debounce(() => {
 async function applyTabGrouping(groups, settings) {
   isGrouping = true;
   try {
-    const tabs = await chrome.tabs.query({ currentWindow: true });
+    // Brave crashes when chrome.tabs.group() targets a tab inside a popup
+    // window (brave/brave-browser#59347). Only touch tabs that live in
+    // normal windows.
+    const normalWindowIds = await getNormalWindowIds();
+    const tabs = (await chrome.tabs.query({ currentWindow: true })).filter(
+      (t) => normalWindowIds.has(t.windowId),
+    );
     const usedGroupIds = new Set();
     const processedTabIds = new Set();
     const groupPositions = [];

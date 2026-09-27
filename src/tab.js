@@ -1,5 +1,12 @@
+import { getNormalWindowIds } from "./window.js";
+
 export async function saveAndCloseAllTabs() {
-  const tabs = await chrome.tabs.query({ currentWindow: true });
+  // Only manage tabs in normal windows; popup/panel windows are left
+  // alone (closing their only tab would close the window itself).
+  const normalWindowIds = await getNormalWindowIds();
+  const tabs = (await chrome.tabs.query({ currentWindow: true })).filter(
+    (t) => normalWindowIds.has(t.windowId),
+  );
   const newTabs = tabs
     .filter((tab) => typeof tab.url === "string")
     .map((tab) => ({
