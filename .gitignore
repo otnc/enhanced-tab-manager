@@ -1,2 +1,8 @@
 node_modules/
 private/
+
+# Local AI agent config; only .agents/skills is published
+.claude/
+.agent/
+.agents/*
+!.agents/skills/

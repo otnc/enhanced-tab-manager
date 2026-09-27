@@ -1,3 +1,5 @@
+import { getNormalWindowIds } from "./window.js";
+
 let isGrouping = false;
 
 function debounce(fn, wait = 300) {
@@ -133,79 +135,34 @@ function normalizeUrl(url, settings) {
   return processed;
 }
 
-function smartIncludes(url, pattern) {
-  const clean = pattern.replace(/\*/g, "");
-  if (!clean) return false;
-
-  let searchPos = 0;
-  while (searchPos < url.length) {
-    const index = url.indexOf(clean, searchPos);
-    if (index === -1) return false;
-
-    const startChar = clean[0];
-    const isPatternStartAlpha = /[a-zA-Z0-9]/.test(startChar);
-
-    let isBoundaryStart = true;
-    if (isPatternStartAlpha) {
-      const prevChar = index > 0 ? url[index - 1] : null;
-      isBoundaryStart = index === 0 || /[^a-zA-Z0-9]/.test(prevChar);
+// Glob-style pattern matching:
+// - "*" matches any sequence of characters (including none)
+// - "?" matches exactly one character
+// - a pattern without wildcards requires an exact match
+// Examples: "*.example.com" (subdomains), "example.*" (any TLD), "*keyword*" (partial match), "example.com" (exact match).
+function globToRegExp(pattern) {
+  let source = "";
+  for (const ch of pattern) {
+    if (ch === "*") {
+      source += ".*";
+    } else if (ch === "?") {
+      source += ".";
+    } else {
+      source += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
-
-    const endChar = clean[clean.length - 1];
-    const isPatternEndAlpha = /[a-zA-Z0-9]/.test(endChar);
-
-    let isBoundaryEnd = true;
-    if (isPatternEndAlpha) {
-      const nextCharIndex = index + clean.length;
-      const nextChar = nextCharIndex < url.length ? url[nextCharIndex] : null;
-      isBoundaryEnd =
-        nextCharIndex === url.length || /[^a-zA-Z0-9]/.test(nextChar);
-    }
-
-    if (isBoundaryStart && isBoundaryEnd) {
-      return true;
-    }
-
-    searchPos = index + 1;
   }
-  return false;
+  return new RegExp(`^${source}$`);
 }
 
 function isMatch(url, pattern, disableWildcards) {
   if (!pattern) return false;
 
-  const currentDomain = url;
-  const domain = pattern;
-
-  if (domain === currentDomain) {
-    return true;
-  }
-
   if (disableWildcards) {
-    return smartIncludes(currentDomain, domain);
+    // Treat "*" and "?" as literal characters and require an exact match.
+    return url === pattern;
   }
 
-  if (domain.startsWith("*.")) {
-    const cleanPattern = domain.replace("*", "");
-    if (`.${currentDomain}`.endsWith(cleanPattern)) {
-      return true;
-    }
-  }
-
-  if (domain.endsWith(".*")) {
-    const cleanPattern = domain.replace("*", "");
-    if (`${currentDomain}.`.startsWith(cleanPattern)) {
-      return true;
-    }
-  }
-
-  if (domain.startsWith("*.") && domain.endsWith(".*")) {
-    const cleanPattern = domain.replace(/\*/g, "");
-    if (`${currentDomain}.`.includes(cleanPattern)) {
-      return true;
-    }
-  }
-  return smartIncludes(currentDomain, domain);
+  return globToRegExp(pattern).test(url);
 }
 
 export const scheduleGrouping = debounce(() => {
@@ -231,24 +188,16 @@ export const scheduleGrouping = debounce(() => {
 async function applyTabGrouping(groups, settings) {
   isGrouping = true;
   try {
-    const tabs = await chrome.tabs.query({ currentWindow: true });
+    // Brave crashes when chrome.tabs.group() targets a tab inside a popup window (brave/brave-browser#59347). Only touch tabs that live in normal windows.
+    const normalWindowIds = await getNormalWindowIds();
+    const tabs = (await chrome.tabs.query({ currentWindow: true })).filter(
+      (t) => normalWindowIds.has(t.windowId),
+    );
     const usedGroupIds = new Set();
     const processedTabIds = new Set();
     const groupPositions = [];
 
     const desiredNames = groups.map((g) => g.name).filter(Boolean);
-
-    const allGroupIds = [...new Set(tabs.map((t) => t.groupId))].filter(
-      (id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE,
-    );
-
-    for (const gid of allGroupIds) {
-      try {
-        const tg = await chrome.tabGroups.get(gid);
-        if (!desiredNames.includes(tg.title)) {
-        }
-      } catch {}
-    }
 
     for (const group of groups) {
       if (
@@ -336,7 +285,6 @@ async function applyTabGrouping(groups, settings) {
       }
     }
 
-    const updated = await chrome.tabs.query({ currentWindow: true });
     groupPositions.sort((a, b) => a.index - b.index);
     for (const { groupId, index } of groupPositions) {
       try {

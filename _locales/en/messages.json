@@ -22,7 +22,7 @@
   "hTabGroups": { "message": "Group Settings" },
   "btnAddGroup": { "message": "+ Add Group" },
   "phGroupName": { "message": "Group Name" },
-  "phPatterns": { "message": "Pattern (e.g. word* *word \"exact\")" },
+  "phPatterns": { "message": "Patterns (e.g. example.com *.example.com *keyword*)" },
   "hDataManage": { "message": "Data Management" },
   "btnExport": { "message": "Export Settings" },
   "btnImport": { "message": "Import Settings" },

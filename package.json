@@ -1,7 +1,7 @@
 {
   "name": "enhanced-tab-manager",
-  "version": "1.0.0",
-  "main": "background.js",
+  "version": "1.1.0",
+  "main": "src/background.js",
   "scripts": {
     "format": "prettier --write ."
   },

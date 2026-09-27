@@ -22,7 +22,7 @@
   "hTabGroups": { "message": "グループ設定" },
   "btnAddGroup": { "message": "＋グループを追加" },
   "phGroupName": { "message": "グループ名" },
-  "phPatterns": { "message": "パターン (例: word* *word \"完全一致\")" },
+  "phPatterns": { "message": "パターン (例: example.com *.example.com *keyword*)" },
   "hDataManage": { "message": "データ管理" },
   "btnExport": { "message": "設定をエクスポート" },
   "btnImport": { "message": "設定をインポート" },

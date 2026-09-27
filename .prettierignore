@@ -1,5 +1,6 @@
 _locales/
 node_modules/
+private/
 manifest.json
 package-lock.json
 package.json

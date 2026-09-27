@@ -41,21 +41,31 @@
 
 ## Pattern Matching Rules / パターンマッチングの仕様
 
-You can use the following patterns to define group rules.
-グループの定義には以下のパターン記法が使用できます。
+Patterns use a glob-style syntax. Wildcards can appear anywhere in a pattern and can be combined freely.
+パターンは glob 風の記法です。ワイルドカードは位置を問わず使え、自由に組み合わせられます。
 
-| Pattern / 記法     | Description / 説明                                                                                                 | Match Example / 一致         | No-Match / 不一致                   |
-| :----------------- | :----------------------------------------------------------------------------------------------------------------- | :--------------------------- | :---------------------------------- |
-| **`word`**         | **Smart Partial Match (Default)**<br>Matches whole words/domains only.<br>単語境界を考慮した部分一致（デフォルト） | `word.com`<br>`sub.word.org` | `sword.com`<br>`keywords.net`       |
-| **`"exact.com"`**  | **Exact Match**<br>Matches the entire URL/Domain perfectly.<br>完全一致                                            | `exact.com`                  | `sub.exact.com`<br>`exact.com/path` |
-| **`prefix*`**      | **Starts With**<br>Matches the beginning of the string.<br>前方一致                                                | `prefix-test.com`            | `my-prefix.com`                     |
-| **`*suffix`**      | **Ends With**<br>Matches the end of the string.<br>後方一致                                                        | `test.suffix`                | `suffix.test`                       |
-| **`*.domain.com`** | **Subdomain Wildcard**<br>Matches subdomains only.<br>サブドメインのみ一致                                         | `blog.domain.com`            | `domain.com`<br>`other.com`         |
-| **`domain.*`**     | **TLD Wildcard**<br>Matches any Top Level Domain.<br>TLDワイルドカード                                             | `domain.com`<br>`domain.jp`  | `my-domain.com`                     |
+| Wildcard / ワイルドカード | Meaning / 意味                                                |
+| :------------------------ | :------------------------------------------------------------ |
+| `*`                       | Any sequence of characters (including none) / 任意の0文字以上 |
+| `?`                       | Any single character / 任意の1文字                            |
+
+| Pattern / 記法      | Description / 説明                                                                     | Match Example / 一致例                    | No-Match / 不一致例                     |
+| :------------------ | :------------------------------------------------------------------------------------- | :---------------------------------------- | :-------------------------------------- |
+| `example.com`       | **Exact Match**<br>Matches the entire URL/Domain perfectly.<br>完全一致                | `example.com`                             | `sub.example.com`<br>`example.org`      |
+| `*.example.com`     | **Subdomain Wildcard**<br>Matches subdomains only.<br>サブドメインのみ一致             | `blog.example.com`                        | `example.com`<br>`notexample.com`       |
+| `example.*`         | **TLD Wildcard**<br>Matches any Top Level Domain.<br>TLDワイルドカード                 | `example.com`<br>`example.jp`             | `my-example.com`                        |
+| `*keyword*`         | **Partial Match**<br>Matches anywhere in the string.<br>部分一致                       | `my-keyword.com`<br>`keyword.example.com` | (matches anywhere / どこにあっても一致) |
+| `shop?.example.com` | **Single Character Wildcard**<br>Matches exactly one character.<br>1文字ワイルドカード | `shop1.example.com`                       | `shop12.example.com`                    |
 
 > [!Note]
 > Before matching, URLs are normalized based on your settings (e.g., removing `https://`, `www.`, or query parameters).
 > マッチングの前に、設定に基づいてURLの正規化（`https://`や`www.`の削除など）が行われます。
+>
+> A pattern without wildcards requires an exact match. The old quoted exact-match syntax (`"exact.com"`) was removed in v1.1.0; stored patterns are migrated automatically on update.
+> ワイルドカードなしのパターンは完全一致になります。旧バージョンの引用符による完全一致記法（`"exact.com"`）は v1.1.0 で廃止され、保存済みのパターンは更新時に自動変換されます。
+>
+> With the "Disable Wildcards" option enabled, `*` and `?` are treated as literal characters and patterns require an exact match.
+> 「ワイルドカードを無効化」オプションを有効にすると、`*` と `?` は通常の文字として扱われ、完全一致での判定になります。
 
 ### Download
 
