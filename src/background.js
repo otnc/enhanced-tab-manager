@@ -72,8 +72,7 @@ chrome.tabs.onCreated.addListener(tryGrouping);
 chrome.runtime.onStartup.addListener(tryGrouping);
 chrome.tabs.onRemoved.addListener(tryGrouping);
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  // Re-group when the URL changes or the tab moves in or out of a group
-  // (groupId === TAB_GROUP_ID_NONE means the tab was ungrouped).
+  // Re-group when the URL changes or the tab moves in or out of a group (groupId === TAB_GROUP_ID_NONE means the tab was ungrouped).
   if (changeInfo.url || changeInfo.groupId !== undefined) {
     tryGrouping();
   }
@@ -94,8 +93,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (keysToCheck.some((k) => changes[k])) {
       tryGrouping();
     }
-    // Convert old-format groups imported from a backup of a previous
-    // version (no-op unless patternVersion is stale).
+    // Convert old-format groups imported from a backup of a previous version (no-op unless patternVersion is stale).
     if (changes.groups) {
       migratePatterns();
     }

@@ -139,8 +139,7 @@ function normalizeUrl(url, settings) {
 // - "*" matches any sequence of characters (including none)
 // - "?" matches exactly one character
 // - a pattern without wildcards requires an exact match
-// Examples: "*.example.com" (subdomains), "example.*" (any TLD),
-// "*keyword*" (partial match), "example.com" (exact match).
+// Examples: "*.example.com" (subdomains), "example.*" (any TLD), "*keyword*" (partial match), "example.com" (exact match).
 function globToRegExp(pattern) {
   let source = "";
   for (const ch of pattern) {
@@ -189,9 +188,7 @@ export const scheduleGrouping = debounce(() => {
 async function applyTabGrouping(groups, settings) {
   isGrouping = true;
   try {
-    // Brave crashes when chrome.tabs.group() targets a tab inside a popup
-    // window (brave/brave-browser#59347). Only touch tabs that live in
-    // normal windows.
+    // Brave crashes when chrome.tabs.group() targets a tab inside a popup window (brave/brave-browser#59347). Only touch tabs that live in normal windows.
     const normalWindowIds = await getNormalWindowIds();
     const tabs = (await chrome.tabs.query({ currentWindow: true })).filter(
       (t) => normalWindowIds.has(t.windowId),
