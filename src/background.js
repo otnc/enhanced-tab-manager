@@ -68,7 +68,9 @@ chrome.tabs.onCreated.addListener(tryGrouping);
 chrome.runtime.onStartup.addListener(tryGrouping);
 chrome.tabs.onRemoved.addListener(tryGrouping);
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.url || changeInfo.groupId == null) {
+  // Re-group when the URL changes or the tab moves in or out of a group
+  // (groupId === TAB_GROUP_ID_NONE means the tab was ungrouped).
+  if (changeInfo.url || changeInfo.groupId !== undefined) {
     tryGrouping();
   }
 });

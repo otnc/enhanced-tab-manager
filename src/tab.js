@@ -27,14 +27,22 @@ export async function saveAndCloseAllTabs() {
 
   const ids = tabs.map((t) => t.id).filter(Number.isInteger);
   if (ids.length > 0) {
-    chrome.tabs.remove(ids);
+    try {
+      await chrome.tabs.remove(ids);
+    } catch (err) {
+      console.error("Failed to close tabs", err);
+    }
   }
 }
 
 export async function restoreAllTabs() {
   const { closedTabs = [] } = await chrome.storage.local.get("closedTabs");
   for (const { url } of closedTabs) {
-    chrome.tabs.create({ url, active: false });
+    try {
+      await chrome.tabs.create({ url, active: false });
+    } catch (err) {
+      console.error("Failed to restore tab", url, err);
+    }
   }
   await chrome.storage.local.set({ closedTabs: [] });
 }

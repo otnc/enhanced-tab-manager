@@ -246,18 +246,6 @@ async function applyTabGrouping(groups, settings) {
 
     const desiredNames = groups.map((g) => g.name).filter(Boolean);
 
-    const allGroupIds = [...new Set(tabs.map((t) => t.groupId))].filter(
-      (id) => id !== chrome.tabGroups.TAB_GROUP_ID_NONE,
-    );
-
-    for (const gid of allGroupIds) {
-      try {
-        const tg = await chrome.tabGroups.get(gid);
-        if (!desiredNames.includes(tg.title)) {
-        }
-      } catch {}
-    }
-
     for (const group of groups) {
       if (
         !group.name ||
@@ -344,7 +332,6 @@ async function applyTabGrouping(groups, settings) {
       }
     }
 
-    const updated = await chrome.tabs.query({ currentWindow: true });
     groupPositions.sort((a, b) => a.index - b.index);
     for (const { groupId, index } of groupPositions) {
       try {

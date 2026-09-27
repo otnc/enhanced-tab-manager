@@ -1,3 +1,5 @@
+import { restoreAllTabs, saveAndCloseAllTabs } from "../src/tab.js";
+
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const msg = chrome.i18n.getMessage(el.getAttribute("data-i18n"));
@@ -217,11 +219,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   restoreAllBtn.addEventListener("click", () => {
-    closedTabs.forEach((t) =>
-      chrome.tabs.create({ url: t.url, active: false }),
-    );
-    closedTabs = [];
-    saveClosedTabs();
+    // The closed-tabs list re-renders via the storage.onChanged listener.
+    restoreAllTabs();
   });
 
   clearAllBtn.addEventListener("click", () => {
@@ -229,27 +228,9 @@ document.addEventListener("DOMContentLoaded", () => {
     saveClosedTabs();
   });
 
-  saveCloseAllBtn.addEventListener("click", async () => {
-    const tabs = await chrome.tabs.query({ currentWindow: true });
-    const newTabs = tabs
-      .filter((t) => typeof t.url === "string")
-      .map((t) => ({
-        title: t.title || t.url,
-        url: t.url,
-        favIconUrl: t.favIconUrl,
-      }));
-
-    chrome.storage.local.get(["closedTabs", "keepWindowOpen"], (res) => {
-      const existing = res.closedTabs || [];
-      const keep = res.keepWindowOpen || false;
-      closedTabs = [...existing, ...newTabs];
-      chrome.storage.local.set({ closedTabs }, async () => {
-        if (keep) await chrome.tabs.create({});
-        const ids = tabs.map((t) => t.id).filter(Boolean);
-        chrome.tabs.remove(ids);
-        renderClosedTabs();
-      });
-    });
+  saveCloseAllBtn.addEventListener("click", () => {
+    // The closed-tabs list re-renders via the storage.onChanged listener.
+    saveAndCloseAllTabs();
   });
 
   chrome.storage.local.get("closedTabs", (res) => {
