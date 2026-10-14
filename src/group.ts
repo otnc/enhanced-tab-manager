@@ -184,6 +184,7 @@ export const scheduleGrouping = debounce(() => {
       "optIgnoreHash",
       "optDomainOnly",
       "optDisableWildcards",
+      "optGroupForeignTabs",
     ],
     (settings: { groups?: TabGroup[] } & GroupingSettings) => {
       const groups = settings.groups || [];
@@ -209,11 +210,12 @@ async function applyTabGrouping(
 
     const desiredNames = groups.map((g) => g.name).filter(Boolean);
 
-    // Tabs inside groups this extension does not manage (e.g. the Claude in Chrome MCP tab group) are left untouched, otherwise they would be pulled out of that group.
+    // Tabs inside groups this extension does not manage (e.g. the Claude in Chrome MCP tab group) are left untouched unless optGroupForeignTabs is on, otherwise they would be pulled out of that group.
     const foreignGroupIds = new Set<number>();
     const seenGroupIds = new Set<number>();
     for (const t of tabs) {
       if (
+        settings.optGroupForeignTabs ||
         t.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE ||
         seenGroupIds.has(t.groupId)
       )

@@ -39,4 +39,5 @@ export interface GroupingSettings {
   optIgnoreHash?: boolean;
   optDomainOnly?: boolean;
   optDisableWildcards?: boolean;
+  optGroupForeignTabs?: boolean;
 }

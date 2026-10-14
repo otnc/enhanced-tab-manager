@@ -17,6 +17,7 @@ chrome.runtime.onInstalled.addListener((details) => {
       "optIgnoreHash",
       "optDomainOnly",
       "optDisableWildcards",
+      "optGroupForeignTabs",
     ],
     (res) => {
       const defaults: Record<string, boolean> = {
@@ -29,6 +30,7 @@ chrome.runtime.onInstalled.addListener((details) => {
         optIgnoreHash: true,
         optDomainOnly: false,
         optDisableWildcards: false,
+        optGroupForeignTabs: false,
       };
 
       const updates: Record<string, boolean> = {};
@@ -85,6 +87,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       "optIgnoreHash",
       "optDomainOnly",
       "optDisableWildcards",
+      "optGroupForeignTabs",
     ];
     if (keysToCheck.some((k) => changes[k])) {
       tryGrouping();

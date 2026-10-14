@@ -19,6 +19,7 @@
   "lblIgnoreHash": { "message": "Ignore Hash (#tag)" },
   "lblDomainOnly": { "message": "Match Domain Only" },
   "lblDisableWildcards": { "message": "Disable Wildcards (*)" },
+  "lblGroupForeignTabs": { "message": "Also group tabs in other groups" },
   "hTabGroups": { "message": "Group Settings" },
   "btnAddGroup": { "message": "+ Add Group" },
   "phGroupName": { "message": "Group Name" },
