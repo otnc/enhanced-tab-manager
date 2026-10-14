@@ -209,6 +209,26 @@ async function applyTabGrouping(
 
     const desiredNames = groups.map((g) => g.name).filter(Boolean);
 
+    // Tabs inside groups this extension does not manage (e.g. the Claude in Chrome MCP tab group) are left untouched, otherwise they would be pulled out of that group.
+    const foreignGroupIds = new Set<number>();
+    const seenGroupIds = new Set<number>();
+    for (const t of tabs) {
+      if (
+        t.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE ||
+        seenGroupIds.has(t.groupId)
+      )
+        continue;
+      seenGroupIds.add(t.groupId);
+      try {
+        const tg = await chrome.tabGroups.get(t.groupId);
+        if (tg.title === undefined || !desiredNames.includes(tg.title)) {
+          foreignGroupIds.add(t.groupId);
+        }
+      } catch {
+        foreignGroupIds.add(t.groupId);
+      }
+    }
+
     for (const group of groups) {
       if (
         !group.name ||
@@ -221,6 +241,7 @@ async function applyTabGrouping(
         if (
           t.id === undefined ||
           processedTabIds.has(t.id) ||
+          foreignGroupIds.has(t.groupId) ||
           typeof t.url !== "string"
         )
           return false;
