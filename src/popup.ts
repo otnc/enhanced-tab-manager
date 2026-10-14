@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const optIgnoreHash = byId<HTMLInputElement>("opt-ignore-hash");
   const optDomainOnly = byId<HTMLInputElement>("opt-domain-only");
   const optDisableWildcards = byId<HTMLInputElement>("opt-disable-wildcards");
+  const optGroupForeignTabs = byId<HTMLInputElement>("opt-group-foreign-tabs");
 
   const managerUI = byId("manager-ui");
   const groupingUI = byId("grouping-ui");
@@ -78,6 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "optIgnoreHash",
       "optDomainOnly",
       "optDisableWildcards",
+      "optGroupForeignTabs",
     ];
     chrome.storage.local.get<ManagerSettings & GroupingSettings>(
       keys,
@@ -95,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
         optIgnoreHash.checked = res.optIgnoreHash !== false;
         optDomainOnly.checked = res.optDomainOnly === true;
         optDisableWildcards.checked = res.optDisableWildcards === true;
+        optGroupForeignTabs.checked = res.optGroupForeignTabs === true;
 
         toggleUI(eM, eG);
       },
@@ -118,6 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindCheckbox(optIgnoreHash, "optIgnoreHash");
   bindCheckbox(optDomainOnly, "optDomainOnly");
   bindCheckbox(optDisableWildcards, "optDisableWildcards");
+  bindCheckbox(optGroupForeignTabs, "optGroupForeignTabs");
 
   chkEnableManager.addEventListener("change", () =>
     toggleUI(chkEnableManager.checked, chkEnableGrouping.checked),
@@ -366,6 +370,9 @@ document.addEventListener("DOMContentLoaded", () => {
       optDomainOnly.checked = changes.optDomainOnly.newValue as boolean;
     if (changes.optDisableWildcards)
       optDisableWildcards.checked = changes.optDisableWildcards
+        .newValue as boolean;
+    if (changes.optGroupForeignTabs)
+      optGroupForeignTabs.checked = changes.optGroupForeignTabs
         .newValue as boolean;
   });
 });

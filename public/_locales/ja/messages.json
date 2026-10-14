@@ -19,6 +19,7 @@
   "lblIgnoreHash": { "message": "ハッシュ (#tag) を無視" },
   "lblDomainOnly": { "message": "ドメイン名のみで判定する" },
   "lblDisableWildcards": { "message": "ワイルドカード拡張 (*) を無効化" },
+  "lblGroupForeignTabs": { "message": "他のグループ内のタブもグループ化する" },
   "hTabGroups": { "message": "グループ設定" },
   "btnAddGroup": { "message": "＋グループを追加" },
   "phGroupName": { "message": "グループ名" },
