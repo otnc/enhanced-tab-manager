@@ -27,7 +27,8 @@ export async function migratePatterns(): Promise<void> {
 
   if (Array.isArray(res.groups)) {
     const groups: TabGroup[] = res.groups.map((g: TabGroup) => {
-      if (!g || !Array.isArray(g.patterns)) return g;
+      if (!g || g.matchTarget === "rules" || !Array.isArray(g.patterns))
+        return g;
       return { ...g, patterns: g.patterns.map(convertPattern) };
     });
     if (JSON.stringify(groups) !== JSON.stringify(res.groups)) {

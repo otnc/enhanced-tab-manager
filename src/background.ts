@@ -90,7 +90,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       "optGroupForeignTabs",
     ];
     if (keysToCheck.some((k) => changes[k])) {
-      tryGrouping();
+      scheduleGrouping(true);
     }
     // Convert old-format groups imported from a backup of a previous version (no-op unless patternVersion is stale).
     if (changes.groups) {

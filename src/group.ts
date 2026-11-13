@@ -1,7 +1,9 @@
+import { matchingPatterns } from "./group-matching";
 import { getNormalWindowIds } from "./window";
 import type { GroupingSettings, TabGroup, TabGroupColor } from "./types";
 
 let isGrouping = false;
+let regroupAfterCurrentRun = false;
 
 function debounce<A extends unknown[]>(fn: (...args: A) => void, wait = 300) {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -11,173 +13,16 @@ function debounce<A extends unknown[]>(fn: (...args: A) => void, wait = 300) {
   };
 }
 
-function punycodeToUnicode(domain: string): string {
-  const base = 36;
-  const tMin = 1;
-  const tMax = 26;
-  const skew = 38;
-  const damp = 700;
-  const initialBias = 72;
-  const initialN = 128;
-  const delimiter = "-";
-
-  let output: string[] = [];
-  let input = domain.split("");
-  const i = domain.lastIndexOf(delimiter);
-  let n = initialN;
-  let bias = initialBias;
-  let index = 0;
-
-  if (i > 0) {
-    output = input.slice(0, i);
-    input = input.slice(i + 1);
-  }
-
-  while (input.length > 0) {
-    const oldi = index;
-    let w = 1;
-
-    for (let k = base; ; k += base) {
-      const shifted = input.shift();
-      if (shifted === undefined) break;
-      const charCode = shifted.charCodeAt(0);
-      const digit = charCode - (charCode < 58 ? 22 : charCode < 91 ? 65 : 97);
-      index += digit * w;
-
-      const t = k <= bias ? tMin : k >= bias + tMax ? tMax : k - bias;
-
-      if (digit < t) break;
-      w *= base - t;
-    }
-
-    bias = adapt(index - oldi, output.length + 1, oldi === 0);
-    n += Math.floor(index / (output.length + 1));
-    index %= output.length + 1;
-    output.splice(index++, 0, String.fromCharCode(n));
-  }
-
-  return output.join("");
-
-  function adapt(delta: number, numPoints: number, firstTime: boolean): number {
-    delta = firstTime ? Math.floor(delta / damp) : delta >> 1;
-    delta += Math.floor(delta / numPoints);
-    let k = 0;
-    while (delta > ((base - tMin) * tMax) >> 1) {
-      delta = Math.floor(delta / (base - tMin));
-      k += base;
-    }
-    return k + Math.floor(((base - tMin + 1) * delta) / (delta + skew));
-  }
-}
-
-function decodePunycodeUrl(url: string): string {
-  try {
-    const punycodePattern = /\bxn--[a-zA-Z0-9-]+/i;
-    if (!punycodePattern.test(url)) return url;
-
-    try {
-      const urlObj = new URL(url.includes("://") ? url : `http://${url}`);
-      const hostname = urlObj.hostname;
-      if (hostname.includes("xn--")) {
-        const decodedHost = hostname
-          .split(".")
-          .map((part) =>
-            part.startsWith("xn--") ? punycodeToUnicode(part.slice(4)) : part,
-          )
-          .join(".");
-        return url.replace(hostname, decodedHost);
-      }
-    } catch {
-      return url
-        .split(".")
-        .map((part) => {
-          if (part.startsWith("xn--")) return punycodeToUnicode(part.slice(4));
-          return part;
-        })
-        .join(".");
-    }
-    return url;
-  } catch {
-    return url;
-  }
-}
-
-function normalizeUrl(url: string, settings: GroupingSettings): string {
-  let processed = decodePunycodeUrl(url);
-
-  if (settings.optIgnoreProtocol) {
-    processed = processed.replace(/^https?:\/\//, "");
-  }
-
-  if (settings.optIgnoreWww) {
-    processed = processed.replace(/^www\d*\./, "");
-  }
-
-  if (settings.optDomainOnly) {
-    const slashIndex = processed.indexOf("/");
-    if (slashIndex !== -1) {
-      processed = processed.substring(0, slashIndex);
-    }
-    return processed;
-  }
-
-  if (settings.optIgnoreQuery) {
-    const qIndex = processed.indexOf("?");
-    if (qIndex !== -1) {
-      processed = processed.substring(0, qIndex);
-    }
-  }
-
-  if (settings.optIgnoreHash) {
-    const hIndex = processed.indexOf("#");
-    if (hIndex !== -1) {
-      processed = processed.substring(0, hIndex);
-    }
-  }
-
-  return processed;
-}
-
-// Glob-style pattern matching:
-// - "*" matches any sequence of characters (including none)
-// - "?" matches exactly one character
-// - a pattern without wildcards requires an exact match
-// Examples: "*.example.com" (subdomains), "example.*" (any TLD), "*keyword*" (partial match), "example.com" (exact match).
-function globToRegExp(pattern: string): RegExp {
-  let source = "";
-  for (const ch of pattern) {
-    if (ch === "*") {
-      source += ".*";
-    } else if (ch === "?") {
-      source += ".";
-    } else {
-      source += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
-  }
-  return new RegExp(`^${source}$`);
-}
-
-function isMatch(
-  url: string,
-  pattern: string,
-  disableWildcards?: boolean,
-): boolean {
-  if (!pattern) return false;
-
-  if (disableWildcards) {
-    // Treat "*" and "?" as literal characters and require an exact match.
-    return url === pattern;
-  }
-
-  return globToRegExp(pattern).test(url);
-}
-
-export const scheduleGrouping = debounce(() => {
+const runGrouping = debounce(async () => {
   if (isGrouping) return;
+  isGrouping = true;
 
-  chrome.storage.local.get(
-    [
+  try {
+    const settings = await chrome.storage.local.get<
+      { groups?: TabGroup[]; enableGrouping?: boolean } & GroupingSettings
+    >([
       "groups",
+      "enableGrouping",
       "optIgnoreProtocol",
       "optIgnoreWww",
       "optIgnoreQuery",
@@ -185,19 +30,37 @@ export const scheduleGrouping = debounce(() => {
       "optDomainOnly",
       "optDisableWildcards",
       "optGroupForeignTabs",
-    ],
-    (settings: { groups?: TabGroup[] } & GroupingSettings) => {
-      const groups = settings.groups || [];
-      applyTabGrouping(groups, settings);
-    },
-  );
+    ]);
+    if (settings.enableGrouping !== false) {
+      await applyTabGrouping(settings.groups ?? [], settings);
+    }
+  } catch (err) {
+    console.error("Grouping failed", err);
+  } finally {
+    isGrouping = false;
+    if (regroupAfterCurrentRun) {
+      regroupAfterCurrentRun = false;
+      runGrouping();
+    }
+  }
 }, 500);
+
+/**
+ * Schedules grouping for the current window. Settings changes during a pass
+ * request another pass so the latest rules are applied.
+ *
+ * @example
+ * scheduleGrouping(true);
+ */
+export const scheduleGrouping = (settingsChanged = false) => {
+  if (isGrouping && settingsChanged) regroupAfterCurrentRun = true;
+  else runGrouping();
+};
 
 async function applyTabGrouping(
   groups: TabGroup[],
   settings: GroupingSettings,
 ): Promise<void> {
-  isGrouping = true;
   try {
     // Brave crashes when chrome.tabs.group() targets a tab inside a popup window (brave/brave-browser#59347). Only touch tabs that live in normal windows.
     const normalWindowIds = await getNormalWindowIds();
@@ -231,14 +94,8 @@ async function applyTabGrouping(
       }
     }
 
+    // Each tab goes to the first matching group in the saved list.
     for (const group of groups) {
-      if (
-        !group.name ||
-        !Array.isArray(group.patterns) ||
-        group.patterns.length === 0
-      )
-        continue;
-
       const matched = tabs.filter((t) => {
         if (
           t.id === undefined ||
@@ -247,10 +104,7 @@ async function applyTabGrouping(
           typeof t.url !== "string"
         )
           return false;
-        const cleanUrl = normalizeUrl(t.url, settings);
-        return group.patterns.some((p) =>
-          isMatch(cleanUrl, p, settings.optDisableWildcards),
-        );
+        return matchingPatterns(t.url, group, settings).length > 0;
       });
 
       if (matched.length === 0) continue;
@@ -314,11 +168,9 @@ async function applyTabGrouping(
 
         if (isManagedGroup) {
           if (typeof t.url !== "string") continue;
-          const cleanUrl = normalizeUrl(t.url, settings);
-          const matchesAny = groups.some((g) =>
-            g.patterns.some((p) =>
-              isMatch(cleanUrl, p, settings.optDisableWildcards),
-            ),
+          const url = t.url;
+          const matchesAny = groups.some(
+            (group) => matchingPatterns(url, group, settings).length > 0,
           );
 
           if (!matchesAny) {
@@ -338,7 +190,5 @@ async function applyTabGrouping(
     }
   } catch (err) {
     console.error("Grouping failed", err);
-  } finally {
-    isGrouping = false;
   }
 }

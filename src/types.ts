@@ -16,6 +16,7 @@ export interface TabGroup {
   name: string;
   patterns: string[];
   color: TabGroupColor;
+  matchTarget?: "hostname" | "url" | "rules";
 }
 
 export interface ClosedTab {
