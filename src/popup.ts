@@ -1,4 +1,5 @@
 import { restoreAllTabs, saveAndCloseAllTabs } from "./tab";
+import { matchingPatterns, parseGroupingRule } from "./group-matching";
 import type {
   ClosedTab,
   GroupingSettings,
@@ -46,8 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const clearAllBtn = byId<HTMLButtonElement>("clear-all");
   const saveCloseAllBtn = byId<HTMLButtonElement>("save-close-all");
 
-  const groupList = byId<HTMLUListElement>("group-list");
+  const groupList = byId<HTMLOListElement>("group-list");
   const addGroupBtn = byId<HTMLButtonElement>("add-group");
+  const previewUrl = byId<HTMLInputElement>("preview-url");
+  const previewResults = byId<HTMLUListElement>("preview-results");
 
   const btnExport = byId<HTMLButtonElement>("btn-export");
   const btnImportTrigger = byId<HTMLButtonElement>("btn-import-trigger");
@@ -67,6 +70,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let closedTabs: ClosedTab[] = [];
   let groups: TabGroup[] = [];
+  let groupSave = Promise.resolve();
+  let groupSavePending = false;
 
   function loadSettings() {
     const keys: (keyof ManagerSettings | keyof GroupingSettings)[] = [
@@ -100,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
         optGroupForeignTabs.checked = res.optGroupForeignTabs === true;
 
         toggleUI(eM, eG);
+        renderPreview();
       },
     );
   }
@@ -266,12 +272,85 @@ document.addEventListener("DOMContentLoaded", () => {
     },
   );
 
-  function saveGroups() {
-    chrome.storage.local.set({ groups });
+  const renderPreview = () => {
+    previewResults.replaceChildren();
+    const url = previewUrl.value.trim();
+    if (!url) return;
+
+    const appendResult = (message: string) => {
+      const item = document.createElement("li");
+      item.textContent = message;
+      previewResults.append(item);
+    };
+
+    if (!previewUrl.validity.valid) {
+      appendResult(chrome.i18n.getMessage("groupPreviewInvalid"));
+      return;
+    }
+
+    const settings: GroupingSettings = {
+      optIgnoreProtocol: optIgnoreProtocol.checked,
+      optIgnoreWww: optIgnoreWww.checked,
+      optIgnoreQuery: optIgnoreQuery.checked,
+      optIgnoreHash: optIgnoreHash.checked,
+      optDomainOnly: optDomainOnly.checked,
+      optDisableWildcards: optDisableWildcards.checked,
+    };
+
+    for (const group of groups) {
+      const patterns = matchingPatterns(url, group, settings);
+      if (patterns.length === 0) continue;
+      const key = previewResults.childElementCount
+        ? "groupPreviewAlsoMatches"
+        : "groupPreviewWinner";
+      appendResult(
+        chrome.i18n.getMessage(key, [group.name, patterns.join(", ")]),
+      );
+    }
+
+    if (!previewResults.childElementCount) {
+      appendResult(chrome.i18n.getMessage("groupPreviewNoMatch"));
+    }
+  };
+
+  previewUrl.addEventListener("input", renderPreview);
+
+  const updateGroups = (updatedGroups: TabGroup[]) => {
+    if (JSON.stringify(updatedGroups) === JSON.stringify(groups)) return;
+    groups = updatedGroups;
     renderGroups();
-  }
+    renderPreview();
+  };
+
+  const saveGroups = () => {
+    renderPreview();
+    const snapshot = groups.map((group) => ({ ...group }));
+    groupSavePending = true;
+    const save = groupSave.then(async () => {
+      try {
+        await chrome.storage.local.set({ groups: snapshot });
+      } catch (error) {
+        console.error("Failed to save groups", error);
+        alert(chrome.i18n.getMessage("groupSaveFailed"));
+      }
+
+      if (groupSave !== save) return;
+      try {
+        const saved = await chrome.storage.local.get<{ groups?: TabGroup[] }>(
+          "groups",
+        );
+        if (groupSave === save) updateGroups(saved.groups ?? []);
+      } catch (error) {
+        console.error("Failed to load groups", error);
+      } finally {
+        if (groupSave === save) groupSavePending = false;
+      }
+    });
+    groupSave = save;
+  };
 
   function renderGroups() {
+    const scrollTop = groupList.scrollTop;
     groupList.innerHTML = "";
     groups.forEach((g, idx) => {
       const li = document.createElement("li");
@@ -279,6 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const colorSel = document.createElement("select");
       colorSel.className = "color-select";
+      colorSel.setAttribute("aria-label", chrome.i18n.getMessage("groupColor"));
       colorSel.style.borderLeft = `5px solid ${g.color || "grey"}`;
       availableColors.forEach((c) => {
         const opt = document.createElement("option");
@@ -289,6 +369,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       colorSel.addEventListener("change", () => {
         groups[idx].color = colorSel.value as TabGroupColor;
+        colorSel.style.borderLeftColor = colorSel.value;
         saveGroups();
       });
 
@@ -296,8 +377,10 @@ document.addEventListener("DOMContentLoaded", () => {
       nameInp.className = "group-name";
       nameInp.value = g.name;
       nameInp.placeholder = phGroupName;
+      nameInp.setAttribute("aria-label", phGroupName);
       nameInp.addEventListener("change", () => {
-        groups[idx].name = nameInp.value.trim();
+        nameInp.value = nameInp.value.trim();
+        groups[idx].name = nameInp.value;
         saveGroups();
       });
 
@@ -305,34 +388,134 @@ document.addEventListener("DOMContentLoaded", () => {
       patInp.className = "group-patterns";
       patInp.value = g.patterns.join(" ");
       patInp.placeholder = phPatterns;
+      patInp.setAttribute(
+        "aria-label",
+        chrome.i18n.getMessage("groupPatterns"),
+      );
+      const ruleError = document.createElement("p");
+      ruleError.className = "rule-error";
+      ruleError.id = `group-rule-error-${idx}`;
+      ruleError.setAttribute("role", "status");
+      patInp.setAttribute("aria-describedby", ruleError.id);
+      const readPatterns = () =>
+        patInp.value.trim().split(/\s+/).filter(Boolean);
+      const updatePatternError = () => {
+        const invalidRule =
+          g.matchTarget === "rules"
+            ? readPatterns().find((pattern) => !parseGroupingRule(pattern))
+            : undefined;
+        ruleError.hidden = invalidRule === undefined;
+        ruleError.textContent =
+          invalidRule === undefined
+            ? ""
+            : chrome.i18n.getMessage("groupRuleInvalid", invalidRule);
+        patInp.setAttribute("aria-invalid", String(invalidRule !== undefined));
+      };
+      updatePatternError();
+      patInp.addEventListener("input", updatePatternError);
       patInp.addEventListener("change", () => {
-        groups[idx].patterns = patInp.value
-          .trim()
-          .split(/\s+/)
-          .filter((s) => s);
+        g.patterns = readPatterns();
         saveGroups();
       });
+
+      const matchTarget = document.createElement("select");
+      matchTarget.className = "match-target";
+      matchTarget.setAttribute(
+        "aria-label",
+        chrome.i18n.getMessage("groupMatchTarget"),
+      );
+      matchTarget.add(
+        new Option(chrome.i18n.getMessage("groupMatchDefault"), ""),
+      );
+      matchTarget.add(
+        new Option(chrome.i18n.getMessage("groupMatchHostname"), "hostname"),
+      );
+      matchTarget.add(
+        new Option(chrome.i18n.getMessage("groupMatchUrl"), "url"),
+      );
+      matchTarget.add(
+        new Option(chrome.i18n.getMessage("groupMatchRules"), "rules"),
+      );
+      matchTarget.value = g.matchTarget ?? "";
+      matchTarget.addEventListener("change", () => {
+        switch (matchTarget.value) {
+          case "hostname":
+          case "url":
+          case "rules":
+            g.matchTarget = matchTarget.value;
+            break;
+          default:
+            delete g.matchTarget;
+        }
+        updatePatternError();
+        saveGroups();
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "group-actions";
+      const addMoveButton = (
+        direction: -1 | 1,
+        glyph: string,
+        message: string,
+      ) => {
+        const button = document.createElement("button");
+        const nextIndex = idx + direction;
+        const label = chrome.i18n.getMessage(message);
+        button.className = direction === -1 ? "move-up" : "move-down";
+        button.textContent = glyph;
+        button.title = label;
+        button.setAttribute("aria-label", label);
+        button.disabled = nextIndex < 0 || nextIndex >= groups.length;
+        button.addEventListener("click", () => {
+          [groups[idx], groups[nextIndex]] = [groups[nextIndex], groups[idx]];
+          renderGroups();
+          const movedRow = groupList.children[nextIndex];
+          const moveButton = movedRow.querySelector<HTMLButtonElement>(
+            `.${button.className}:enabled`,
+          );
+          const availableButton = movedRow.querySelector<HTMLButtonElement>(
+            ".group-actions button:enabled",
+          );
+          (moveButton ?? availableButton)?.focus({ preventScroll: true });
+          movedRow.scrollIntoView({ block: "nearest" });
+          saveGroups();
+        });
+        actions.append(button);
+      };
+      addMoveButton(-1, "↑", "groupMoveUp");
+      addMoveButton(1, "↓", "groupMoveDown");
 
       const del = document.createElement("button");
       del.textContent = "×";
+      del.title = chrome.i18n.getMessage("groupRemove");
+      del.setAttribute("aria-label", del.title);
       del.addEventListener("click", () => {
         groups.splice(idx, 1);
+        renderGroups();
         saveGroups();
       });
 
-      li.append(colorSel, nameInp, patInp, del);
+      actions.append(del);
+      li.append(colorSel, nameInp, actions, matchTarget, patInp, ruleError);
       groupList.append(li);
     });
+    groupList.scrollTop = scrollTop;
   }
 
   addGroupBtn.addEventListener("click", () => {
-    groups.push({ name: "", patterns: [], color: "grey" });
+    groups.push({
+      name: "",
+      patterns: [],
+      color: "grey",
+      matchTarget: "hostname",
+    });
+    renderGroups();
+    groupList.lastElementChild?.querySelector("input")?.focus();
     saveGroups();
   });
 
   chrome.storage.local.get<{ groups?: TabGroup[] }>("groups", (res) => {
-    groups = res.groups || [];
-    renderGroups();
+    updateGroups(res.groups ?? []);
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -341,9 +524,8 @@ document.addEventListener("DOMContentLoaded", () => {
       closedTabs = (changes.closedTabs.newValue as ClosedTab[]) || [];
       renderClosedTabs();
     }
-    if (changes.groups) {
-      groups = (changes.groups.newValue as TabGroup[]) || [];
-      renderGroups();
+    if (changes.groups && !groupSavePending) {
+      updateGroups((changes.groups.newValue as TabGroup[]) ?? []);
     }
 
     if (changes.enableManager) {
@@ -374,5 +556,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (changes.optGroupForeignTabs)
       optGroupForeignTabs.checked = changes.optGroupForeignTabs
         .newValue as boolean;
+    renderPreview();
   });
 });

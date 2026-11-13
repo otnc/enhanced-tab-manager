@@ -58,6 +58,24 @@ Patterns use a glob-style syntax. Wildcards can appear anywhere in a pattern and
 >
 > With the "Disable Wildcards" option enabled, `*` and `?` are treated as literal characters and patterns require an exact match.
 
+### Explicit Rules
+
+Select **Explicit Rules** as a group's matching target, then enter space-separated rules. Existing groups keep their current matching target and patterns until you edit them.
+
+| Rule                     | Matches                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `host:github.com`        | The hostname `github.com` on any path. Use `host:mail.*` for a hostname glob. |
+| `domain:github.io`       | `github.io` and subdomains such as `otnc.github.io`.                          |
+| `host:github.com/otnc/*` | Pages on `github.com` with a path starting with `/otnc/`.                     |
+| `url:*keyword*`          | The URL after applying the protocol, WWW, query, and fragment options.        |
+| `!host:gist.github.com`  | Excludes `gist.github.com` from this group, so later groups can match it.     |
+
+A group needs at least one matching inclusion. A matching exclusion takes precedence anywhere in the group. Groups with an invalid rule are skipped, and the settings show which rule needs fixing. The first matching group in the list wins.
+
+`host:` and `domain:` read the hostname directly, including any `www` label, and ignore the port, query, and fragment. Hostnames are case-insensitive. The optional path in `host:` is case-sensitive. The **Disable Wildcards** option applies to `host:` and `url:`.
+
+For a GitHub group, try `domain:github.com domain:github.io domain:githubusercontent.com`. This matches `raw.githubusercontent.com` and skips Go Packages pages whose path contains `github.com`. Use **Test a URL** to check which group wins.
+
 ## Download
 
 - [Chrome Web Store](https://chromewebstore.google.com/detail/pjjabdbillaokbiighjgibfajkacfind)

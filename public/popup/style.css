@@ -121,9 +121,14 @@ button {
     border-color 0.2s;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: var(--button-hover);
   border-color: var(--accent);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .group-row {
@@ -141,20 +146,74 @@ button:hover {
 
 .group-name {
   flex: 1;
-  min-width: 80px;
+  min-width: 0;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.9rem;
 }
 
-.group-patterns {
-  flex: 2;
-  min-width: 100px;
+.group-patterns,
+.match-target,
+#preview-url {
+  box-sizing: border-box;
+  width: 100%;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.9rem;
+}
+
+.group-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.group-actions button {
+  padding-inline: 7px;
+}
+
+.group-list {
+  max-height: 260px;
+}
+
+.group-hint {
+  margin: 0 0 8px;
+  color: #555;
+}
+
+.rule-error {
+  width: 100%;
+  margin: 0;
+  color: #a12622;
+  overflow-wrap: anywhere;
+}
+
+.group-rule-examples {
+  padding-left: 20px;
+}
+
+.group-rule-examples code {
+  display: block;
+}
+
+.group-preview {
+  margin-top: 12px;
+}
+
+.group-preview summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.group-preview label {
+  display: block;
+  margin: 8px 0 4px;
+}
+
+#preview-results {
+  padding-left: 20px;
+  overflow-wrap: anywhere;
 }
 
 input:focus,

@@ -107,8 +107,49 @@
     <div id="grouping-ui">
       <section class="section">
         <h2 data-i18n="hTabGroups">Group Settings</h2>
-        <ul id="group-list" class="group-list"></ul>
+        <p class="group-hint" data-i18n="groupPriorityHint">
+          Tabs go into the first matching group, starting at the top.
+        </p>
+        <ol id="group-list" class="group-list" role="list"></ol>
         <button id="add-group" data-i18n="btnAddGroup">+ Add Group</button>
+        <details class="group-preview">
+          <summary data-i18n="groupRuleHelp">Rule syntax</summary>
+          <p data-i18n="groupRuleHelpIntro">
+            Select Explicit Rules and separate rules with spaces.
+          </p>
+          <ul class="group-rule-examples">
+            <li>
+              <code>domain:github.com</code>
+              <span data-i18n="groupRuleDomain">Domain and its subdomains</span>
+            </li>
+            <li>
+              <code>host:github.com/otnc/*</code>
+              <span data-i18n="groupRuleHost"
+                >Hostname with an optional path</span
+              >
+            </li>
+            <li>
+              <code>url:*keyword*</code>
+              <span data-i18n="groupRuleUrl">Full URL using URL options</span>
+            </li>
+            <li>
+              <code>!host:gist.github.com</code>
+              <span data-i18n="groupRuleExclude"
+                >Exclude a match from this group</span
+              >
+            </li>
+          </ul>
+        </details>
+        <details class="group-preview">
+          <summary data-i18n="groupPreview">Test a URL</summary>
+          <label for="preview-url" data-i18n="groupPreviewUrl">Page URL</label>
+          <input
+            id="preview-url"
+            type="url"
+            placeholder="https://example.com/"
+          />
+          <ul id="preview-results" aria-live="polite"></ul>
+        </details>
       </section>
     </div>
 
